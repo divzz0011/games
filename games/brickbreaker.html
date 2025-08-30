@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brick Breaker Neon</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    canvas {
+      background: radial-gradient(circle, #000 70%, #111);
+      border: 2px solid cyan;
+      box-shadow: 0 0 25px cyan;
+    }
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .overlay h1 {
+      font-size: 2em;
+      color: cyan;
+      text-shadow: 0 0 15px cyan;
+    }
+    .overlay button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      background: cyan;
+      color: black;
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 0 15px cyan;
+    }
+    .overlay button:hover {
+      background: magenta;
+      box-shadow: 0 0 20px magenta;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      text-shadow: 0 0 10px cyan;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="480" height="320"></canvas>
+  <div id="score">Score: 0</div>
+
+  <!-- Overlay Start -->
+  <div class="overlay" id="startOverlay">
+    <h1>Brick Breaker Neon</h1>
+    <button onclick="startGame()">Start Game</button>
+    <button onclick="backToMenu()">Back to Menu</button>
+  </div>
+
+  <!-- Overlay Game Over -->
+  <div class="overlay" id="gameOverOverlay" style="display:none;">
+    <h1 id="gameOverText">Game Over</h1>
+    <button onclick="retryGame()">Retry</button>
+    <button onclick="backToMenu()">Back to Menu</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+
+    let paddleHeight = 10, paddleWidth = 75;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+
+    let ballRadius = 8;
+    let x = canvas.width/2, y = canvas.height-30;
+    let dx = 2, dy = -2;
+
+    let rightPressed = false, leftPressed = false;
+    let score = 0;
+
+    const brickRowCount = 4;
+    const brickColumnCount = 6;
+    const brickWidth = 60, brickHeight = 20, brickPadding = 10;
+    const brickOffsetTop = 30, brickOffsetLeft = 30;
+
+    let bricks = [];
+    for(let c=0; c<brickColumnCount; c++) {
+      bricks[c] = [];
+      for(let r=0; r<brickRowCount; r++) {
+        bricks[c][r] = { x:0, y:0, status:1 };
+      }
+    }
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    function keyDownHandler(e) {
+      if(e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
+      else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
+    }
+    function keyUpHandler(e) {
+      if(e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
+      else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+      ctx.fillStyle = "cyan";
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "cyan";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddleX, canvas.height-paddleHeight-10, paddleWidth, paddleHeight);
+      ctx.fillStyle = "magenta";
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "magenta";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawBricks() {
+      for(let c=0; c<brickColumnCount; c++) {
+        for(let r=0; r<brickRowCount; r++) {
+          if(bricks[c][r].status == 1) {
+            let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
+            let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
+            bricks[c][r].x = brickX;
+            bricks[c][r].y = brickY;
+            ctx.beginPath();
+            ctx.rect(brickX, brickY, brickWidth, brickHeight);
+            ctx.fillStyle = "lime";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "lime";
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    function collisionDetection() {
+      for(let c=0; c<brickColumnCount; c++) {
+        for(let r=0; r<brickRowCount; r++) {
+          let b = bricks[c][r];
+          if(b.status == 1) {
+            if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+              dy = -dy;
+              b.status = 0;
+              score++;
+              playBeep();
+              scoreEl.textContent = "Score: " + score;
+              if(score == brickRowCount*brickColumnCount) {
+                showGameOver("You Win!");
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBricks();
+      drawBall();
+      drawPaddle();
+      collisionDetection();
+
+      if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) dx = -dx;
+      if(y + dy < ballRadius) dy = -dy;
+      else if(y + dy > canvas.height-ballRadius) {
+        if(x > paddleX && x < paddleX + paddleWidth) {
+          dy = -dy;
+          playBeep();
+        } else {
+          showGameOver("Game Over");
+          return;
+        }
+      }
+
+      if(rightPressed && paddleX < canvas.width-paddleWidth) paddleX += 5;
+      else if(leftPressed && paddleX > 0) paddleX -= 5;
+
+      x += dx; y += dy;
+      requestAnimationFrame(draw);
+    }
+
+    // Overlay & Control
+    function startGame() {
+      document.getElementById("startOverlay").style.display = "none";
+      document.getElementById("gameOverOverlay").style.display = "none";
+      resetGame();
+      draw();
+    }
+
+    function retryGame() { startGame(); }
+
+    function backToMenu() { window.location.href = "../index.html"; }
+
+    function showGameOver(msg) {
+      document.getElementById("gameOverText").innerText = msg;
+      document.getElementById("gameOverOverlay").style.display = "flex";
+    }
+
+    function resetGame() {
+      x = canvas.width/2; y = canvas.height-30;
+      dx = 2; dy = -2;
+      paddleX = (canvas.width-paddleWidth)/2;
+      score = 0;
+      scoreEl.textContent = "Score: 0";
+      for(let c=0; c<brickColumnCount; c++) {
+        for(let r=0; r<brickRowCount; r++) {
+          bricks[c][r].status = 1;
+        }
+      }
+    }
+
+    // Audio Synth Beep
+    function playBeep() {
+      const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctxAudio.createOscillator();
+      const gainNode = ctxAudio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(440, ctxAudio.currentTime);
+      gainNode.gain.setValueAtTime(0.1, ctxAudio.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctxAudio.destination);
+      oscillator.start();
+      oscillator.stop(ctxAudio.currentTime + 0.1);
+    }
+  </script>
+</body>
+</html>

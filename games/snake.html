@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Snake Neon</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0f;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: radial-gradient(circle at center, #111 0%, #000 100%);
+    }
+
+    /* Overlay menu/game over */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .overlay h1 {
+      font-size: 3em;
+      color: #ff00cc;
+      text-shadow: 0 0 10px #ff00cc, 0 0 20px #00ffff;
+      margin-bottom: 20px;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .actions button {
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .cta {
+      background: linear-gradient(45deg,#ff00cc,#3333ff);
+      color: #fff;
+    }
+    .cta:hover { opacity: 0.8; }
+    .ghost {
+      background: transparent;
+      border: 2px solid #888;
+      color: #ccc;
+    }
+    .ghost:hover { border-color: #fff; color: #fff; }
+
+    #scoreboard {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: 1.2em;
+      text-shadow: 0 0 5px #0ff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay -->
+  <div class="overlay" id="overlay">
+    <h1 id="title">SNAKE NEON</h1>
+    <div class="actions">
+      <button class="cta" id="startBtn">Mulai Game</button>
+      <button class="ghost" id="backMenu">🏠 Kembali ke Menu</button>
+      <button class="ghost" id="muteBtn">🔈 Suara: ON</button>
+      <button class="ghost" id="resetHi">Reset High Score</button>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div id="scoreboard">Score: 0 | High: 0</div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const overlay = document.getElementById("overlay");
+    const title = document.getElementById("title");
+    const startBtn = document.getElementById("startBtn");
+    const backMenuBtn = document.getElementById("backMenu");
+    const muteBtn = document.getElementById("muteBtn");
+    const resetHiBtn = document.getElementById("resetHi");
+    const scoreboard = document.getElementById("scoreboard");
+
+    let box = 20;
+    let snake, direction, food, score, highScore;
+    let game;
+    let soundsOn = true;
+
+    // Load high score
+    highScore = parseInt(localStorage.getItem("snakeHighScore")) || 0;
+
+    // Audio Beep
+    const beep = new AudioContext();
+    function playBeep(freq=440, duration=100) {
+      if (!soundsOn) return;
+      const osc = beep.createOscillator();
+      const gain = beep.createGain();
+      osc.connect(gain);
+      gain.connect(beep.destination);
+      osc.frequency.value = freq;
+      osc.type = "sawtooth";
+      osc.start();
+      gain.gain.setValueAtTime(0.05, beep.currentTime);
+      osc.stop(beep.currentTime + duration/1000);
+    }
+
+    function resetGame() {
+      snake = [{ x: 9 * box, y: 10 * box }];
+      direction = null;
+      score = 0;
+      food = {
+        x: Math.floor(Math.random() * 19) * box,
+        y: Math.floor(Math.random() * 19) * box
+      };
+    }
+
+    function changeDirection(e) {
+      if (e.keyCode == 37 && direction != "RIGHT") direction = "LEFT";
+      else if (e.keyCode == 38 && direction != "DOWN") direction = "UP";
+      else if (e.keyCode == 39 && direction != "LEFT") direction = "RIGHT";
+      else if (e.keyCode == 40 && direction != "UP") direction = "DOWN";
+    }
+
+    function draw() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // Draw snake
+      for (let i=0; i<snake.length; i++) {
+        ctx.fillStyle = i==0 ? "#ff00cc" : "#fff";
+        ctx.shadowColor = i==0 ? "#ff00cc" : "#0ff";
+        ctx.shadowBlur = 15;
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw food
+      ctx.fillStyle = "lime";
+      ctx.shadowColor = "lime";
+      ctx.shadowBlur = 15;
+      ctx.fillRect(food.x, food.y, box, box);
+      ctx.shadowBlur = 0;
+
+      let snakeX = snake[0].x;
+      let snakeY = snake[0].y;
+
+      if (direction == "LEFT") snakeX -= box;
+      if (direction == "UP") snakeY -= box;
+      if (direction == "RIGHT") snakeX += box;
+      if (direction == "DOWN") snakeY += box;
+
+      // Makan
+      if (snakeX == food.x && snakeY == food.y) {
+        score++;
+        playBeep(600,150);
+        food = {
+          x: Math.floor(Math.random() * 19) * box,
+          y: Math.floor(Math.random() * 19) * box
+        };
+      } else {
+        snake.pop();
+      }
+
+      let newHead = { x: snakeX, y: snakeY };
+
+      // Game over
+      if (snakeX < 0 || snakeY < 0 ||
+          snakeX >= canvas.width || snakeY >= canvas.height ||
+          collision(newHead, snake)) {
+        clearInterval(game);
+        playBeep(200,400);
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem("snakeHighScore", highScore);
+        }
+        title.textContent = "GAME OVER";
+        startBtn.textContent = "Main Lagi";
+        overlay.style.display = "flex";
+      }
+
+      snake.unshift(newHead);
+
+      scoreboard.textContent = `Score: ${score} | High: ${highScore}`;
+    }
+
+    function collision(head, array) {
+      for (let i=0;i<array.length;i++) {
+        if (head.x == array[i].x && head.y == array[i].y) return true;
+      }
+      return false;
+    }
+
+    // Button actions
+    startBtn.addEventListener("click", ()=>{
+      resetGame();
+      overlay.style.display = "none";
+      document.addEventListener("keydown", changeDirection);
+      game = setInterval(draw,100);
+    });
+
+    backMenuBtn.addEventListener("click",()=>{
+      window.location.href="../index.html";
+    });
+
+    muteBtn.addEventListener("click",()=>{
+      soundsOn = !soundsOn;
+      muteBtn.textContent = soundsOn ? "🔈 Suara: ON" : "🔇 Suara: OFF";
+    });
+
+    resetHiBtn.addEventListener("click",()=>{
+      localStorage.removeItem("snakeHighScore");
+      highScore = 0;
+      scoreboard.textContent = `Score: ${score} | High: ${highScore}`;
+    });
+
+    // Show overlay first
+    overlay.style.display = "flex";
+    title.textContent = "SNAKE NEON";
+    startBtn.textContent = "Mulai Game";
+  </script>
+</body>
+</html>

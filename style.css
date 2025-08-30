@@ -1,0 +1,107 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #0a0f0d;
+    color: #f0f0f0;
+    margin: 0;
+    text-align: center;
+  }
+  
+  header {
+    padding: 20px;
+    background: #111;
+    border-bottom: 2px solid #ff2fb9;
+  }
+  
+  h1 { color: #ff2fb9; }
+  
+  .game-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px;
+    gap: 20px;
+  }
+  
+  .game-card {
+    background: #1c1c2e;
+    padding: 30px;
+    border-radius: 15px;
+    width: 200px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  .game-card:hover {
+    transform: scale(1.05);
+    background: #292945;
+  }
+
+
+
+
+
+
+
+  /* ===================
+   FOOTER / DEVELOPER INFO
+=================== */
+footer.dev-info {
+    margin-top: 40px;
+    padding: 20px;
+    text-align: center;
+    background: #111;
+    border-top: 2px solid #ff00ff;
+    box-shadow: 0 0 15px #ff00ff55;
+  }
+  
+  footer.dev-info h2 {
+    color: #ff00ff;
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff33ff;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  footer.dev-info p {
+    margin: 5px 0;
+    font-size: 1rem;
+    color: #fff;
+  }
+  
+  .neon-text {
+    color: #00ffff;
+    text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #00ffff;
+    animation: glow 2s infinite alternate;
+  }
+  
+  .neon-link {
+    color: #ff00ff;
+    text-decoration: none;
+    text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff33ff, 0 0 20px #ff66ff;
+    transition: 0.3s;
+  }
+  
+  .neon-link:hover {
+    color: #00ffff;
+    text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff, 0 0 30px #00ffff;
+  }
+  
+  @keyframes glow {
+    from {
+      text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff;
+    }
+    to {
+      text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    }
+  }
+  
+
+
+
+
+
+
+
+
+  

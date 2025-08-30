@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dodge Block Neon</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0f;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: radial-gradient(circle at center, #111 0%, #000 100%);
+    }
+    /* Overlay */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .overlay h1 {
+      font-size: 3em;
+      color: #ff00cc;
+      text-shadow: 0 0 10px #ff00cc, 0 0 20px #00ffff;
+      margin-bottom: 20px;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .actions button {
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .cta {
+      background: linear-gradient(45deg,#ff00cc,#3333ff);
+      color: #fff;
+    }
+    .cta:hover { opacity: 0.8; }
+    .ghost {
+      background: transparent;
+      border: 2px solid #888;
+      color: #ccc;
+    }
+    .ghost:hover { border-color: #fff; color: #fff; }
+
+    /* Scoreboard */
+    #scoreboard {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      font-size: 1.2em;
+      text-shadow: 0 0 5px #0ff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay -->
+  <div class="overlay" id="overlay">
+    <h1 id="title">DODGE BLOCK</h1>
+    <div class="actions">
+      <button class="cta" id="startBtn">Mulai Game</button>
+      <button class="ghost" id="backMenu">🏠 Kembali ke Menu</button>
+      <button class="ghost" id="muteBtn">🔈 Suara: ON</button>
+      <button class="ghost" id="resetHi">Reset High Score</button>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="scoreboard">Score: 0 | High: 0</div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const overlay = document.getElementById("overlay");
+    const title = document.getElementById("title");
+    const startBtn = document.getElementById("startBtn");
+    const backMenuBtn = document.getElementById("backMenu");
+    const muteBtn = document.getElementById("muteBtn");
+    const resetHiBtn = document.getElementById("resetHi");
+    const scoreboard = document.getElementById("scoreboard");
+
+    // Vars
+    let player, blocks, score, highScore, gameOver, speed;
+    let soundsOn = true;
+    let frame = 0;
+
+    // High score
+    highScore = parseInt(localStorage.getItem("dodgeHighScore")) || 0;
+
+    // Audio
+    const beep = new AudioContext();
+    function playBeep(freq=440,duration=100) {
+      if (!soundsOn) return;
+      const osc = beep.createOscillator();
+      const gain = beep.createGain();
+      osc.connect(gain);
+      gain.connect(beep.destination);
+      osc.frequency.value = freq;
+      osc.type = "square";
+      gain.gain.setValueAtTime(0.1, beep.currentTime);
+      osc.start();
+      osc.stop(beep.currentTime + duration/1000);
+    }
+
+    function resetGame(){
+      player = { x:180, y:550, w:40, h:40, speed:6 };
+      blocks = [];
+      score = 0;
+      gameOver = false;
+      speed = 2;
+      frame = 0;
+    }
+
+    function spawnBlock(){
+      const x = Math.random()*(canvas.width-40);
+      blocks.push({x:x,y:-40,w:40,h:40});
+    }
+
+    function update(){
+      if(gameOver) return;
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // Player
+      ctx.fillStyle="#ff2fb9";
+      ctx.shadowColor="#ff2fb9"; ctx.shadowBlur=15;
+      ctx.fillRect(player.x,player.y,player.w,player.h);
+      ctx.shadowBlur=0;
+
+      // Controls
+      if(keys["ArrowLeft"] && player.x>0) player.x-=player.speed;
+      if(keys["ArrowRight"] && player.x+player.w<canvas.width) player.x+=player.speed;
+
+      // Blocks
+      if(frame%50===0) spawnBlock();
+      for(let i=blocks.length-1;i>=0;i--){
+        let b=blocks[i];
+        b.y+=speed;
+        ctx.fillStyle="#0ff";
+        ctx.shadowColor="#0ff"; ctx.shadowBlur=10;
+        ctx.fillRect(b.x,b.y,b.w,b.h);
+        ctx.shadowBlur=0;
+
+        // Collision
+        if(collide(player,b)) {
+          endGame();
+        }
+        // Passed
+        if(b.y>canvas.height){
+          blocks.splice(i,1);
+          score++;
+          playBeep(600,100);
+          if(score%5===0) speed+=0.5;
+        }
+      }
+
+      // Score
+      scoreboard.textContent = `Score: ${score} | High: ${highScore}`;
+      frame++;
+      requestAnimationFrame(update);
+    }
+
+    function collide(a,b){
+      return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
+    }
+
+    function endGame(){
+      gameOver = true;
+      playBeep(200,400);
+      if(score>highScore){
+        highScore = score;
+        localStorage.setItem("dodgeHighScore", highScore);
+      }
+      title.textContent="GAME OVER";
+      startBtn.textContent="Main Lagi";
+      overlay.style.display="flex";
+    }
+
+    // Controls
+    const keys={};
+    document.addEventListener("keydown",(e)=>{ keys[e.key]=true; });
+    document.addEventListener("keyup",(e)=>{ keys[e.key]=false; });
+
+    // Buttons
+    startBtn.addEventListener("click",()=>{
+      resetGame();
+      overlay.style.display="none";
+      update();
+    });
+    backMenuBtn.addEventListener("click",()=>{ window.location.href="../index.html"; });
+    muteBtn.addEventListener("click",()=>{
+      soundsOn=!soundsOn;
+      muteBtn.textContent = soundsOn ? "🔈 Suara: ON" : "🔇 Suara: OFF";
+    });
+    resetHiBtn.addEventListener("click",()=>{
+      localStorage.removeItem("dodgeHighScore");
+      highScore=0;
+      scoreboard.textContent=`Score: ${score} | High: ${highScore}`;
+    });
+
+    // Overlay awal
+    overlay.style.display="flex";
+    title.textContent="DODGE BLOCK";
+    startBtn.textContent="Mulai Game";
+  </script>
+</body>
+</html>

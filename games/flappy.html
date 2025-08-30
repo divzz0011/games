@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #111;
+      font-family: Arial, sans-serif;
+    }
+    canvas { background: #70c5ce; }
+
+    /* Overlay */
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-size: 22px;
+      z-index: 10;
+    }
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.2s;
+    }
+    button.cta { background: #ff2fb9; color: #fff; font-weight: bold; }
+    button.ghost { background: #444; color: #fff; }
+    button:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="320" height="480"></canvas>
+
+  <!-- Overlay -->
+  <div id="overlay">
+    <h1>🐦 Flappy Bird</h1>
+    <p id="finalScore">Tekan mulai untuk bermain</p>
+    <div class="actions">
+      <button class="cta" id="startBtn">Mulai Game</button>
+      <button class="ghost" id="backMenu">🏠 Kembali ke Menu</button>
+      <button class="ghost" id="muteBtn">🔈 Suara: ON</button>
+      <button class="ghost" id="resetHi">Reset High Score</button>
+    </div>
+    <p>High Score: <span id="hiScore">0</span></p>
+  </div>
+
+  <script>
+    const cvs = document.getElementById("canvas");
+    const ctx = cvs.getContext("2d");
+
+    // Overlay controls
+    const overlay = document.getElementById("overlay");
+    const startBtn = document.getElementById("startBtn");
+    const backMenu = document.getElementById("backMenu");
+    const muteBtn = document.getElementById("muteBtn");
+    const resetHi = document.getElementById("resetHi");
+    const hiScoreEl = document.getElementById("hiScore");
+    const finalScore = document.getElementById("finalScore");
+
+    // Game variables
+    let frames = 0;
+    const gravity = 0.25;
+    let score = 0, hiScore = localStorage.getItem("flappyHi") || 0;
+    hiScoreEl.textContent = hiScore;
+    let running = false;
+    let muted = false;
+
+    const bird = {
+      x: 50, y: 150, w: 20, h: 20,
+      dy: 0,
+      draw() {
+        ctx.fillStyle = "#ff2fb9";
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+      },
+      update() {
+        this.dy += gravity;
+        this.y += this.dy;
+      },
+      reset() {
+        this.x = 50; this.y = 150; this.dy = 0;
+      }
+    };
+
+    const pipes = [];
+    function drawPipes(){
+      for (let p of pipes) {
+        ctx.fillStyle = "#0f0";
+        ctx.fillRect(p.x,0,30,p.top);
+        ctx.fillRect(p.x,p.top+80,30,cvs.height-(p.top+80));
+      }
+    }
+    function updatePipes(){
+      if(frames%90===0){
+        let top = Math.floor(Math.random()*200)+50;
+        pipes.push({x:cvs.width, top});
+      }
+      for(let i=0;i<pipes.length;i++){
+        pipes[i].x -= 2;
+        if(pipes[i].x+30<0){pipes.splice(i,1); score++;}
+      }
+    }
+
+    function resetGame(){
+      score = 0; frames = 0;
+      bird.reset();
+      pipes.length = 0;
+    }
+
+    function gameOver(){
+      running = false;
+      overlay.style.display = "flex";
+      finalScore.textContent = "Game Over! Skor: " + score;
+      if(score > hiScore){
+        hiScore = score;
+        localStorage.setItem("flappyHi", hiScore);
+      }
+      hiScoreEl.textContent = hiScore;
+    }
+
+    function loop(){
+      if(!running) return;
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      bird.update(); bird.draw();
+      updatePipes(); drawPipes();
+
+      // Score
+      ctx.fillStyle = "#000";
+      ctx.fillText("Score: "+score, 10, 20);
+
+      // Collision
+      for(let p of pipes){
+        if(bird.x < p.x+30 && bird.x+bird.w>p.x && 
+           (bird.y< p.top || bird.y+bird.h>p.top+80)){
+          return gameOver();
+        }
+      }
+      if(bird.y<0||bird.y>cvs.height){
+        return gameOver();
+      }
+
+      frames++; requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", ()=>{ if(running) bird.dy = -4; });
+
+    // Buttons
+    startBtn.addEventListener("click", ()=>{
+      overlay.style.display = "none";
+      resetGame();
+      running = true;
+      loop();
+    });
+
+    backMenu.addEventListener("click", ()=>{ window.location.href = "../index.html"; });
+
+    muteBtn.addEventListener("click", ()=>{
+      muted = !muted;
+      muteBtn.textContent = muted ? "🔇 Suara: OFF" : "🔈 Suara: ON";
+    });
+
+    resetHi.addEventListener("click", ()=>{
+      hiScore = 0;
+      localStorage.removeItem("flappyHi");
+      hiScoreEl.textContent = hiScore;
+    });
+  </script>
+</body>
+</html>
